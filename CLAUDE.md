@@ -24,7 +24,7 @@ Next.js 15 App Router (TypeScript) full-stack app for managing monthly MM (Man-M
 ### Key Data Flow
 - `MMPlan` table holds the live/current plan data (unique per member+product+yearMonth)
 - `MMPlanSnapshot` captures point-in-time copies when snapshots are created (manually or via cron)
-- Comparison = current `MMPlan` vs `MMPlanSnapshot` for a given snapshotMonth → computes deltas
+- Comparison = current month's `MMPlan` vs previous month's `MMPlan` directly (month-to-month comparison)
 
 ### Pages
 - `/` — Dashboard with quick links
@@ -42,8 +42,13 @@ All under `src/app/api/`. CRUD pattern for master data (`teams`, `members`, `pro
 - `src/instrumentation.ts` — Registers cron on server startup
 
 ### Stack
-- DB: SQLite via Prisma ORM (`prisma/schema.prisma`)
+- DB: PostgreSQL via Prisma ORM (`prisma/schema.prisma`) — Vercel Postgres for production
 - Email: Nodemailer + Gmail SMTP (env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`)
 - UI: Tailwind CSS v4
-- Cron: node-cron, initialized in Next.js instrumentation hook
+- Cron: Vercel Cron Jobs (`vercel.json`) — 매월 15일 09:00 `/api/cron` GET 호출
 - Cron endpoint `/api/cron` is protected by `CRON_SECRET` Bearer token
+
+### Deployment
+- Vercel에 배포 (Next.js native support)
+- DB: Vercel Postgres (또는 Neon/Supabase PostgreSQL)
+- `vercel.json`에 cron 스케줄 정의
