@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import PlanCell from "./PlanCell";
-import { FISCAL_MONTHS, formatYearMonth } from "@/lib/types";
+import { FISCAL_MONTHS, formatYearMonth, getPreviousMonth } from "@/lib/types";
 import type { TeamWithMembers, ProductInfo, PlanEntry } from "@/lib/types";
 
 export default function PlanGrid() {
@@ -89,6 +89,54 @@ export default function PlanGrid() {
     saveDirtyEntries();
   };
 
+  const handleCopyFromPrevious = async () => {
+    const prevMonth = getPreviousMonth(selectedMonth);
+    if (!prevMonth) return;
+    if (!confirm(`${formatYearMonth(prevMonth)} 데이터를 현재 월에 복사하시겠습니까? 기존 입력값은 덮어쓰기됩니다.`)) return;
+
+    const res = await fetch(`/api/plans?yearMonth=${prevMonth}`);
+    const prevEntries: PlanEntry[] = await res.json();
+
+    if (prevEntries.length === 0) {
+      alert(`${formatYearMonth(prevMonth)}에 입력된 데이터가 없습니다.`);
+      return;
+    }
+
+    // Apply previous month's data to current grid
+    const newData = new Map(planData);
+    const dirtyEntries: Array<{ memberId: number; productId: number; yearMonth: string; mmValue: number }> = [];
+
+    prevEntries.forEach((e) => {
+      const key = cellKey(e.memberId, e.productId);
+      newData.set(key, e.mmValue);
+      dirtyRef.current.set(key, e.mmValue);
+      dirtyEntries.push({
+        memberId: e.memberId,
+        productId: e.productId,
+        yearMonth: selectedMonth,
+        mmValue: e.mmValue,
+      });
+    });
+
+    setPlanData(newData);
+
+    // Save immediately
+    setSaving(true);
+    try {
+      await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: dirtyEntries }),
+      });
+      dirtyRef.current.clear();
+      setLastSaved(new Date());
+    } catch (err) {
+      console.error("Save failed:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSnapshot = async () => {
     if (!confirm(`${formatYearMonth(selectedMonth)} 스냅샷을 생성하시겠습니까?`)) return;
     // Save any pending changes first
@@ -155,6 +203,15 @@ export default function PlanGrid() {
         >
           {saving ? "저장 중..." : "전체 저장"}
         </button>
+        {getPreviousMonth(selectedMonth) && (
+          <button
+            onClick={handleCopyFromPrevious}
+            disabled={saving}
+            className="px-4 py-1.5 bg-amber-500 text-white rounded-md text-sm hover:bg-amber-600 disabled:opacity-50"
+          >
+            전월 복사
+          </button>
+        )}
         <button
           onClick={handleSnapshot}
           className="px-4 py-1.5 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
