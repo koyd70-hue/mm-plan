@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment } from "react";
 import PlanCell from "./PlanCell";
 import { FISCAL_MONTHS, formatYearMonth, getPreviousMonth } from "@/lib/types";
 import type { TeamWithMembers, ProductInfo, PlanEntry } from "@/lib/types";
@@ -251,7 +251,7 @@ export default function PlanGrid() {
           </thead>
           <tbody>
             {teams.map((team) => (
-              <>
+              <Fragment key={team.id}>
                 {team.members.map((member, memberIdx) => (
                   <tr key={member.id} className="hover:bg-gray-50">
                     {memberIdx === 0 && (
@@ -309,7 +309,7 @@ export default function PlanGrid() {
                     {round2(getTeamTotal(team)) || ""}
                   </td>
                 </tr>
-              </>
+              </Fragment>
             ))}
             {/* Product totals */}
             <tr className="bg-gray-100 font-semibold">

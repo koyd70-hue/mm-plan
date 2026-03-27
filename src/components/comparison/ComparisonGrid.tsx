@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import DeltaCell from "./DeltaCell";
 import { FISCAL_MONTHS, formatYearMonth, getPreviousMonth } from "@/lib/types";
 import type { TeamWithMembers, ProductInfo, ComparisonEntry } from "@/lib/types";
@@ -142,7 +142,7 @@ export default function ComparisonGrid() {
             </thead>
             <tbody>
               {teams.map((team) => (
-                <>
+                <Fragment key={team.id}>
                   {team.members.map((member, memberIdx) => {
                     const memberCurTotal = getMemberCurrentTotal(member.id);
                     const memberPrevTotal = getMemberPrevTotal(member.id);
@@ -227,7 +227,7 @@ export default function ComparisonGrid() {
                       />
                     </td>
                   </tr>
-                </>
+                </Fragment>
               ))}
               {/* Grand total */}
               <tr className="bg-gray-100 font-semibold">
