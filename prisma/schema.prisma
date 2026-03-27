@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  members   Member[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Member {
+  id        Int              @id @default(autoincrement())
+  name      String
+  email     String?
+  teamId    Int
+  team      Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  sortOrder Int              @default(0)
+  plans     MMPlan[]
+  snapshots MMPlanSnapshot[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([name, teamId])
+}
+
+model Product {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  sortOrder Int              @default(0)
+  plans     MMPlan[]
+  snapshots MMPlanSnapshot[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model MMPlan {
+  id        Int      @id @default(autoincrement())
+  memberId  Int
+  productId Int
+  yearMonth String
+  mmValue   Float
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([memberId, productId, yearMonth])
+  @@index([yearMonth])
+}
+
+model MMPlanSnapshot {
+  id            Int      @id @default(autoincrement())
+  memberId      Int
+  productId     Int
+  yearMonth     String
+  mmValue       Float
+  snapshotMonth String
+  member        Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@unique([memberId, productId, yearMonth, snapshotMonth])
+  @@index([snapshotMonth])
+}
+
+model EmailRecipient {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
