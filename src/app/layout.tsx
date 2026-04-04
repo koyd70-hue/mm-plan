@@ -5,6 +5,10 @@ import Sidebar from "@/components/layout/Sidebar";
 export const metadata: Metadata = {
   title: "MM Plan - Man-Month 계획 관리",
   description: "월별 MM 계획을 팀/멤버/Product별로 관리합니다.",
+  icons: {
+    icon: "/icon",
+    apple: "/apple-icon",
+  },
 };
 
 export default function RootLayout({
