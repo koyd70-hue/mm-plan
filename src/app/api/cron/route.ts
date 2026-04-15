@@ -25,15 +25,18 @@ async function runCronJob() {
   const snapshotCount = await createSnapshot(currentMonth);
   console.log(`[Cron] Snapshot created: ${snapshotCount} entries`);
 
-  // Step 2: Build comparison data (current month vs previous month plans)
+  // Step 2: Build data for email template
+  const showComparison = previousMonth !== null;
   let comparisonData: ComparisonEntry[] = [];
-  if (previousMonth) {
+
+  if (showComparison) {
+    // 5월 이후: 전월 비교 데이터
     const currentPlans = await prisma.mMPlan.findMany({
       where: { yearMonth: currentMonth },
       include: { member: { include: { team: true } }, product: true },
     });
     const previousPlans = await prisma.mMPlan.findMany({
-      where: { yearMonth: previousMonth },
+      where: { yearMonth: previousMonth! },
     });
 
     const prevMap = new Map<string, number>();
@@ -82,6 +85,25 @@ async function runCronJob() {
         }
       }
     }
+  } else {
+    // 4월 (첫 번째 달): 현재 계획 현황만 표시
+    const currentPlans = await prisma.mMPlan.findMany({
+      where: { yearMonth: currentMonth },
+      include: { member: { include: { team: true } }, product: true },
+    });
+    for (const plan of currentPlans) {
+      comparisonData.push({
+        memberId: plan.memberId,
+        memberName: plan.member.name,
+        teamId: plan.member.teamId,
+        teamName: plan.member.team.name,
+        productId: plan.productId,
+        productName: plan.product.name,
+        currentValue: plan.mmValue,
+        previousValue: 0,
+        delta: 0,
+      });
+    }
   }
 
   // Step 3: Fetch master data for email template
@@ -101,6 +123,7 @@ async function runCronJob() {
     teams,
     products,
     comparisonData,
+    showComparison,
   });
 
   const subject = `[MM Plan] ${formatYearMonth(currentMonth)} 계획 업데이트`;

@@ -6,6 +6,7 @@ interface TemplateParams {
   teams: TeamWithMembers[];
   products: ProductInfo[];
   comparisonData: ComparisonEntry[];
+  showComparison: boolean;
 }
 
 function round2(n: number): number {
@@ -24,7 +25,7 @@ function formatDelta(delta: number): string {
 }
 
 export function buildEmailHTML(params: TemplateParams): string {
-  const { currentMonth, teams, products, comparisonData } = params;
+  const { currentMonth, teams, products, comparisonData, showComparison } = params;
   const monthLabel = formatYearMonth(currentMonth);
 
   // Build lookup
@@ -68,10 +69,12 @@ export function buildEmailHTML(params: TemplateParams): string {
           memberCur += cur;
           memberPrev += prev;
 
-          const bgColor = delta > 0 ? "#f0fdf4" : delta < 0 ? "#fef2f2" : "#ffffff";
+          const bgColor = showComparison
+            ? delta > 0 ? "#f0fdf4" : delta < 0 ? "#fef2f2" : "#ffffff"
+            : "#ffffff";
           return `<td style="border: 1px solid #d1d5db; padding: 6px 8px; text-align: right; background: ${bgColor};">
             <div style="font-size: 13px;">${round2(cur) || "-"}</div>
-            ${delta !== 0 ? `<div ${deltaStyle(delta)}>${formatDelta(delta)}</div>` : ""}
+            ${showComparison && delta !== 0 ? `<div ${deltaStyle(delta)}>${formatDelta(delta)}</div>` : ""}
           </td>`;
         })
         .join("");
@@ -88,7 +91,7 @@ export function buildEmailHTML(params: TemplateParams): string {
         ${cells}
         <td style="border: 1px solid #d1d5db; padding: 6px 8px; text-align: right; background: #f9fafb;">
           <div style="font-size: 13px; font-weight: 600;">${round2(memberCur) || "-"}</div>
-          ${memberDelta !== 0 ? `<div ${deltaStyle(memberDelta)}>${formatDelta(memberDelta)}</div>` : ""}
+          ${showComparison && memberDelta !== 0 ? `<div ${deltaStyle(memberDelta)}>${formatDelta(memberDelta)}</div>` : ""}
         </td>
       </tr>`;
     }
@@ -107,7 +110,7 @@ export function buildEmailHTML(params: TemplateParams): string {
         const delta = round2(cur - prev);
         return `<td style="border: 1px solid #d1d5db; padding: 6px 8px; text-align: right; background: #eff6ff; font-weight: 600; font-size: 13px;">
           ${round2(cur) || "-"}
-          ${delta !== 0 ? `<span ${deltaStyle(delta)}> ${formatDelta(delta)}</span>` : ""}
+          ${showComparison && delta !== 0 ? `<span ${deltaStyle(delta)}> ${formatDelta(delta)}</span>` : ""}
         </td>`;
       })
       .join("");
@@ -127,7 +130,7 @@ export function buildEmailHTML(params: TemplateParams): string {
       ${teamCells}
       <td style="border: 1px solid #d1d5db; padding: 6px 8px; text-align: right; background: #dbeafe; font-weight: 700; font-size: 13px;">
         ${round2(teamCur) || "-"}
-        ${teamDelta !== 0 ? `<span ${deltaStyle(teamDelta)}> ${formatDelta(teamDelta)}</span>` : ""}
+        ${showComparison && teamDelta !== 0 ? `<span ${deltaStyle(teamDelta)}> ${formatDelta(teamDelta)}</span>` : ""}
       </td>
     </tr>`;
   }
@@ -140,13 +143,19 @@ export function buildEmailHTML(params: TemplateParams): string {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f9fafb;">
   <div style="max-width: 900px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
     <div style="background: #1e40af; padding: 20px 24px;">
-      <h1 style="margin: 0; color: #ffffff; font-size: 18px;">MM 계획 - ${monthLabel}</h1>
+      <h1 style="margin: 0; color: #ffffff; font-size: 18px;">
+        ${showComparison ? `MM 계획 전월 비교 - ${monthLabel}` : `MM 계획 현황 - ${monthLabel}`}
+      </h1>
     </div>
     <div style="padding: 24px;">
       <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px;">
         <span style="font-size: 14px; color: #0369a1;">
           전체 MM: <strong>${round2(grandCurrent)}</strong>
-          ${grandDelta !== 0 ? `<span ${deltaStyle(grandDelta)}> 전월 대비 ${formatDelta(grandDelta)}</span>` : " (전월 동일)"}
+          ${showComparison
+            ? grandDelta !== 0
+              ? `<span ${deltaStyle(grandDelta)}> 전월 대비 ${formatDelta(grandDelta)}</span>`
+              : " (전월 동일)"
+            : ""}
         </span>
       </div>
       <table style="width: 100%; border-collapse: collapse;">

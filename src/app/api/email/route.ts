@@ -4,7 +4,7 @@ import { sendEmail } from "@/lib/email";
 import { buildEmailHTML } from "@/lib/email-template";
 import { getComparison } from "@/lib/snapshot";
 import { formatYearMonth, getPreviousMonth, FISCAL_MONTHS } from "@/lib/types";
-import type { TeamWithMembers, ProductInfo } from "@/lib/types";
+import type { TeamWithMembers, ProductInfo, ComparisonEntry } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
 
   const currentMonth = yearMonth || FISCAL_MONTHS[0];
   const previousMonth = getPreviousMonth(currentMonth);
+  const showComparison = previousMonth !== null;
 
   // Fetch master data
   const [teams, products] = await Promise.all([
@@ -27,10 +28,29 @@ export async function POST(request: NextRequest) {
     }) as Promise<ProductInfo[]>,
   ]);
 
-  // Get comparison data
-  const comparisonData = previousMonth
-    ? await getComparison(currentMonth, previousMonth)
-    : [];
+  // Build data for email template
+  let comparisonData: ComparisonEntry[];
+  if (showComparison) {
+    // 5월 이후: 전월 비교 데이터
+    comparisonData = await getComparison(currentMonth, previousMonth!);
+  } else {
+    // 4월 (첫 번째 달): 현재 계획 현황만 표시
+    const currentPlans = await prisma.mMPlan.findMany({
+      where: { yearMonth: currentMonth },
+      include: { member: { include: { team: true } }, product: true },
+    });
+    comparisonData = currentPlans.map((plan) => ({
+      memberId: plan.memberId,
+      memberName: plan.member.name,
+      teamId: plan.member.teamId,
+      teamName: plan.member.team.name,
+      productId: plan.productId,
+      productName: plan.product.name,
+      currentValue: plan.mmValue,
+      previousValue: 0,
+      delta: 0,
+    }));
+  }
 
   // Build email
   const html = buildEmailHTML({
@@ -38,6 +58,7 @@ export async function POST(request: NextRequest) {
     teams,
     products,
     comparisonData,
+    showComparison,
   });
 
   const subject = `[MM Plan] ${formatYearMonth(currentMonth)} 계획 업데이트`;
