@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { FISCAL_MONTHS } from "@/lib/types";
 
 interface Recipient {
   id: number;
@@ -14,6 +15,10 @@ export default function RecipientManager() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [sendMonth, setSendMonth] = useState<string>(FISCAL_MONTHS[0]);
+  const [testEmail, setTestEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const fetchRecipients = useCallback(async () => {
     const res = await fetch("/api/email/recipients");
@@ -64,6 +69,31 @@ export default function RecipientManager() {
     if (!confirm("이 수신자를 삭제하시겠습니까?")) return;
     await fetch(`/api/email/recipients?id=${id}`, { method: "DELETE" });
     fetchRecipients();
+  };
+
+  const handleSendEmail = async () => {
+    setSending(true);
+    setSendResult(null);
+    try {
+      const body: Record<string, string> = { yearMonth: sendMonth };
+      if (testEmail.trim()) body.testEmail = testEmail.trim();
+
+      const res = await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSendResult({ ok: true, message: `발송 완료 (수신자 ${data.recipientCount}명)` });
+      } else {
+        setSendResult({ ok: false, message: data.error || "발송 실패" });
+      }
+    } catch {
+      setSendResult({ ok: false, message: "네트워크 오류" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -153,6 +183,49 @@ export default function RecipientManager() {
           ))}
         </tbody>
       </table>
+
+      {/* 수동 이메일 발송 */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">이메일 수동 발송</h3>
+        <div className="flex gap-3 items-end flex-wrap">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">대상 월</label>
+            <select
+              value={sendMonth}
+              onChange={(e) => setSendMonth(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              {FISCAL_MONTHS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-48">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              테스트 수신자 <span className="text-gray-400 font-normal">(비우면 전체 수신자에게 발송)</span>
+            </label>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="test@example.com"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            onClick={handleSendEmail}
+            disabled={sending}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {sending ? "발송 중..." : "이메일 발송"}
+          </button>
+        </div>
+        {sendResult && (
+          <p className={`mt-3 text-sm ${sendResult.ok ? "text-green-600" : "text-red-600"}`}>
+            {sendResult.message}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
